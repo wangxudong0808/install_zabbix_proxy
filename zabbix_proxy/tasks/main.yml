@@ -1,0 +1,101 @@
+---
+# tasks file for zabbix_proxy
+- name: install_mariadb
+  yum:
+        name: mariadb-server
+        state: present
+
+- name:
+  copy:
+        src: my.cnf
+        dest: /etc/my.cnf
+
+- name: start mariadb
+  service:
+        name: mariadb
+        state: started
+        enabled: yes
+
+- name: add epel repo
+  shell: wget -O /etc/yum.repos.d/epel.repo https://mirrors.aliyun.com/repo/epel-7.repo
+
+- name: install PyMySQL
+  yum:
+    name: python2-PyMySQL
+    state: present
+
+- name: create database
+  mysql_db:
+        name: zabbix_proxy
+        state: present
+
+- name: create databae user
+  mysql_user:
+        name: zabbix_proxy
+        host: "localhost"
+        password: DD.08.dd
+        priv: 'zabbix_proxy.*:ALL'
+        state: present
+
+- name: zabbix_yum
+  yum_repository:
+        name: zabbix
+        description: Zabbix_name
+        baseurl: https://mirrors.aliyun.com/zabbix/zabbix/4.4/rhel/7/x86_64/
+        gpgcheck: no
+        enabled: yes
+
+- name: install_zabbix_proxy
+  yum:
+        name: zabbix-proxy-mysql
+        state: present
+
+- name: check table exist
+  shell:
+        mysql -uroot -h '{{ ansible_ens33["ipv4"]["address"]}}' -e "use zabbix_proxy; show tables" | sed '1d' | wc -l
+  register: check_result
+
+- name: print test
+  debug:
+        var: check_result
+
+
+- name: zact mysql_zabbix
+  shell:
+        cd /usr/share/doc/zabbix-proxy-mysql-4.4.10/ && zcat schema.sql.gz | mysql -uroot zabbix_proxy
+  when: check_result.stdout != "149"
+
+- name: zabbix_proxy_confi
+  template:
+        src: zabbix_proxy.conf.j2
+        dest: /etc/zabbix/zabbix_proxy.conf
+
+- name: start_zabbix
+  service:
+        name: zabbix-proxy
+        state: started
+        enabled: yes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
